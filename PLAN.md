@@ -42,6 +42,9 @@ Pengujian otomatis dirancang untuk membuktikan seluruh kriteria skenario wajib:
    * Dipilih *Optimistic* menggunakan kolom *version* karena bentrok pada approval aplikasi internal jarang terjadi, sehingga performa lebih ringan dan cocok untuk MVP.
 2. **Autentikasi Simulasi vs Kompleks**:
    * Menggunakan *user switcher* berbasis header/session lokal sesuai spesifikasi asesmen agar fokus penilaian tetap tertuju pada ketepatan aturan bisnis dan *authorization backend*.
+3. **`UseSeeding` / `UseAsyncSeeding` vs `HasData()`**:
+   * Memilih metode EF Core `HasData()` di dalam `OnModelCreating` agar proses migrasi dan *seeding* master data berjalan otomatis dalam satu perintah tanpa skrip tambahan.
+   * Seluruh data *seed* akan terekam di dalam file migrasi (*migration snapshot*). Hal ini sangat praktis dan cepat untuk pengembangan MVP lokal, namun kurang ideal jika data master berukuran besar atau sering berubah di skala produksi.
 
 ## 6. Perubahan Plan Selama Implementasi
 * Belum ada perubahan terhadap implementation plan pada tahap awal.
