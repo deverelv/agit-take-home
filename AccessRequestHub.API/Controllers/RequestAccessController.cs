@@ -1,4 +1,4 @@
-﻿using AccessRequestHub.API.DTOs;
+﻿using AccessRequestHub.Common.DTOs;
 using AccessRequestHub.API.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 

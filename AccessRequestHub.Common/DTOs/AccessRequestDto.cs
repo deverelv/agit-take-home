@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace AccessRequestHub.API.DTOs
+namespace AccessRequestHub.Common.DTOs
 {
     public class CreateAccessRequestDto
     {

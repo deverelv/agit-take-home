@@ -1,4 +1,4 @@
-﻿using AccessRequestHub.API.DTOs;
+﻿using AccessRequestHub.Common.DTOs;
 using AccessRequestHub.API.Models;
 
 namespace AccessRequestHub.API.Extensions

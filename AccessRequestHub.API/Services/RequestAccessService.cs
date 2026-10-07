@@ -1,5 +1,5 @@
 ﻿using AccessRequestHub.API.Context;
-using AccessRequestHub.API.DTOs;
+using AccessRequestHub.Common.DTOs;
 using AccessRequestHub.API.Models;
 using Microsoft.EntityFrameworkCore;
 using AccessRequestHub.API.Interfaces;

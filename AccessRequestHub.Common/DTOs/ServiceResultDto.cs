@@ -1,4 +1,4 @@
-﻿namespace AccessRequestHub.API.DTOs
+﻿namespace AccessRequestHub.Common.DTOs
 {
     public class ServiceResult
     {
