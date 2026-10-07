@@ -52,9 +52,8 @@ namespace AccessRequestHub.API.Services
             };
 
             context.AccessRequests.Add(newRequest);
+            LogAudit(newRequest.Id, requesterEmail, "CREATED", "Request access created.");
             await context.SaveChangesAsync();
-
-            await LogAuditAsync(newRequest.Id, requesterEmail, "CREATED", "Request access created.");
 
             return ServiceResult<GetAccessRequestDto>.Ok(newRequest.ToDto());
         }
@@ -173,15 +172,7 @@ namespace AccessRequestHub.API.Services
             try
             {
                 string auditDetails = actionLower == "approve" ? $"Approved by {actor.Email}" : $"Reason: {dto.Reason}";
-                var audit = new AuditLog
-                {
-                    RequestId = request.Id,
-                    ActorEmail = actor.Email,
-                    Action = auditAction,
-                    Details = auditDetails,
-                    CreatedDate = DateTime.UtcNow
-                };
-                context.AuditLogs.Add(audit);
+                LogAudit(request.Id, actor.Email, auditAction, auditDetails);
                 await context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
@@ -192,6 +183,19 @@ namespace AccessRequestHub.API.Services
             }
 
             return ServiceResult<GetAccessRequestDto>.Ok(request.ToDto());
+        }
+
+        private void LogAudit(int requestId, string actorEmail, string action, string details)
+        {
+            var audit = new AuditLog
+            {
+                RequestId = requestId,
+                ActorEmail = actorEmail,
+                Action = action,
+                Details = details,
+                CreatedDate = DateTime.UtcNow
+            };
+            context.AuditLogs.Add(audit);
         }
     }
 }
