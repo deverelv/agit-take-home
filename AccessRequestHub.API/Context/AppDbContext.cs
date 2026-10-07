@@ -15,6 +15,38 @@ namespace AccessRequestHub.API.Context
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<AccessRequest>()
+                .HasOne(r => r.Requester)
+                .WithMany(u => u.AccessRequests)
+                .HasForeignKey(r => r.RequesterEmail)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AccessRequest>()
+                .HasOne(r => r.Application)
+                .WithMany(a => a.AccessRequests)
+                .HasForeignKey(r => r.ApplicationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AuditLog>()
+                .HasOne(a => a.AccessRequest)
+                .WithMany(r => r.AuditLogs)
+                .HasForeignKey(a => a.RequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AuditLog>()
+                .HasOne(a => a.Actor)
+                .WithMany(u => u.AuditLogs)
+                .HasForeignKey(a => a.ActorEmail)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AccessRequest>()
+                .HasIndex(r => r.ClientRequestId)
+                .IsUnique();
+
+            modelBuilder.Entity<AccessRequest>()
+                .Property(r => r.Version)
+                .IsConcurrencyToken();
+
             modelBuilder.Entity<User>().HasData(
                 new User
                 {
