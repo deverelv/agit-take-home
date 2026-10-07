@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 namespace AccessRequestHub.API.Models
 {
     [Table("applications")]
-    public class Application : EntityBase
+    public class Application
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

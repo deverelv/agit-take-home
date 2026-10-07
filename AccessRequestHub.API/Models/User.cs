@@ -4,9 +4,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace AccessRequestHub.API.Models
 {
     [Table("users")]
-    public class User : EntityBase
+    public class User
     {
         [Key]
+        [MaxLength(255)]
         public string Email { get; set; } = string.Empty;
 
         [Required]
@@ -20,6 +21,7 @@ namespace AccessRequestHub.API.Models
         public string? ManagerEmail { get; set; }
 
         [ForeignKey("ManagerEmail")]
+        [MaxLength(255)]
         public virtual User? Manager { get; set; }
 
         public virtual ICollection<User> DirectReports { get; set; } = new List<User>();
