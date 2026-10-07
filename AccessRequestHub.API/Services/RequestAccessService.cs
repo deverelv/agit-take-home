@@ -74,14 +74,14 @@ namespace AccessRequestHub.API.Services
             if (request.Status == "Approved" || request.Status == "Rejected")
             {
                 logger.LogWarning("Cannot approve access request because it is already in a terminal state. " +
-                    "Id: {RequestId}, Status: {Status}", requestId, request.Status);
+                    "RequestId: {RequestId}, Status: {Status}", requestId, request.Status);
                 return ServiceResult<GetAccessRequestDto>.Fail("Access request is already in a terminal state.");
             }
 
             var actor = await context.Users.FindAsync(dto.ActorEmail);
             if (actor == null)
             {
-                logger.LogWarning("Approval actor not found. ActorEmail: {ActorEmail}, RequestId: {RequestId}", dto.ActorEmail, requestId);
+                logger.LogWarning("Actor not found. ActorEmail: {ActorEmail}, RequestId: {RequestId}", dto.ActorEmail, requestId);
                 return ServiceResult<GetAccessRequestDto>.Fail("Approval actor not found.");
             }
 
@@ -142,6 +142,58 @@ namespace AccessRequestHub.API.Services
             {
                 await context.SaveChangesAsync();
                 await LogAuditAsync(request.Id, actor.Email, auditAction, $"Approved by {actor.Email}");
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                logger.LogError("Concurrency conflict while approving access request. " +
+                    "RequestId: {RequestId}, ActorEmail: {ActorEmail}", requestId, actor.Email);
+                throw new InvalidOperationException("The access request was modified by another process. Please reload the request and try again.");
+            }
+
+            return ServiceResult<GetAccessRequestDto>.Ok(request.ToDto());
+        }
+
+        public async Task<ServiceResult<GetAccessRequestDto>> RejectRequestAsync(int requestId, ApprovalActionDto dto)
+        {
+            var request = await context.AccessRequests
+                .Include(r => r.Application)
+                .Include(r => r.Requester)
+                .FirstOrDefaultAsync(r => r.Id == requestId);
+
+            if (request == null)
+            {
+                logger.LogWarning("Access request not found. RequestId: {RequestId}", requestId);
+                return ServiceResult<GetAccessRequestDto>.Fail("Access request not found.");
+            }
+
+            if (request.Status == "Approved" || request.Status == "Rejected")
+            {
+                logger.LogWarning("Cannot approve access request because it is already in a terminal state. " +
+                    "RequestId: {RequestId}, Status: {Status}", requestId, request.Status);
+                return ServiceResult<GetAccessRequestDto>.Fail("Access request is already in a terminal state.");
+            }
+
+            var actor = await context.Users.FindAsync(dto.ActorEmail);
+            if (actor == null)
+            {
+                logger.LogWarning("Actor not found. ActorEmail: {ActorEmail}, RequestId: {RequestId}", dto.ActorEmail, requestId);
+                return ServiceResult<GetAccessRequestDto>.Fail("Approval actor not found.");
+            }
+
+            if (request.RequesterEmail == actor.Email)
+            {
+                logger.LogWarning("Self-rejection attempt detected. RequestId: {RequestId}, ActorEmail: {ActorEmail}", requestId, actor.Email);
+                return ServiceResult<GetAccessRequestDto>.Fail("You cannot reject your own access request.");
+            }
+
+            request.Status = "Rejected";
+            request.ModifiedDate = DateTime.UtcNow;
+            request.Version++;
+
+            try
+            {
+                await context.SaveChangesAsync();
+                await LogAuditAsync(request.Id, actor.Email, "REJECTED", $"Reason: {dto.Reason}");
             }
             catch (DbUpdateConcurrencyException)
             {

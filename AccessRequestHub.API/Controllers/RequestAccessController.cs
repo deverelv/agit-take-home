@@ -50,5 +50,28 @@ namespace AccessRequestHub.API.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpPost("reject/{id}")]
+        public async Task<IActionResult> RejectRequest(int id, [FromBody] ApprovalActionDto dto)
+        {
+            try
+            {
+                var result = await service.RejectRequestAsync(id, dto);
+                if (!result.Success)
+                {
+                    return BadRequest(result.ErrorMessage);
+                }
+
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }
