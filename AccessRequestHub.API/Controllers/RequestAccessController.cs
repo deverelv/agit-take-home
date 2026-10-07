@@ -9,7 +9,7 @@ namespace AccessRequestHub.API.Controllers
     public class RequestAccessController(IRequestAccessService service) : ControllerBase
     {
         [HttpPost("create")]
-        public async Task<IActionResult> CreateNewRequest([FromQuery] string requesterEmail, [FromBody] CreateAccessRequestDto dto)
+        public async Task<IActionResult> CreateNewRequest([FromHeader(Name = "X-User-Email")] string requesterEmail, [FromBody] CreateAccessRequestDto dto)
         {
             try
             {
