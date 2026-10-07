@@ -60,6 +60,26 @@ namespace AccessRequestHub.API.Services
 
         public async Task<ServiceResult<GetAccessRequestDto>> ApproveRequestAsync(int requestId, ApprovalActionDto dto)
         {
+            return await ProcessActionAsync(requestId, dto, "approve");
+        }
+
+        public async Task<ServiceResult<GetAccessRequestDto>> RejectRequestAsync(int requestId, ApprovalActionDto dto)
+        {
+            return await ProcessActionAsync(requestId, dto, "reject");
+        }
+
+        private async Task<ServiceResult<GetAccessRequestDto>> ProcessActionAsync(int requestId, ApprovalActionDto dto, string actionType)
+        {
+            string actionLower = actionType.ToLower();
+            string pastTense = actionLower == "approve" ? "approved" : "rejected";
+            string actionNoun = actionLower == "approve" ? "approval" : "rejection";
+
+            if (actionLower == "reject" && string.IsNullOrWhiteSpace(dto.Reason))
+            {
+                logger.LogWarning("Reject attempt without reason. RequestId: {RequestId}, ActorEmail: {ActorEmail}", requestId, dto.ActorEmail);
+                return ServiceResult<GetAccessRequestDto>.Fail("A reason is required when rejecting an access request.");
+            }
+
             var request = await context.AccessRequests
                 .Include(r => r.Application)
                 .Include(r => r.Requester)
@@ -73,8 +93,8 @@ namespace AccessRequestHub.API.Services
 
             if (request.Status == "Approved" || request.Status == "Rejected")
             {
-                logger.LogWarning("Cannot approve access request because it is already in a terminal state. " +
-                    "RequestId: {RequestId}, Status: {Status}", requestId, request.Status);
+                logger.LogWarning("Cannot {Action} access request because it is already in a terminal state. RequestId: {RequestId}, Status: {Status}",
+                    actionLower, requestId, request.Status);
                 return ServiceResult<GetAccessRequestDto>.Fail("Access request is already in a terminal state.");
             }
 
@@ -82,57 +102,68 @@ namespace AccessRequestHub.API.Services
             if (actor == null)
             {
                 logger.LogWarning("Actor not found. ActorEmail: {ActorEmail}, RequestId: {RequestId}", dto.ActorEmail, requestId);
-                return ServiceResult<GetAccessRequestDto>.Fail("Approval actor not found.");
+                return ServiceResult<GetAccessRequestDto>.Fail($"{char.ToUpper(actionNoun[0]) + actionNoun[1..]} actor not found.");
             }
 
             if (request.RequesterEmail == actor.Email)
             {
-                logger.LogWarning("Self-approval attempt detected. RequestId: {RequestId}, ActorEmail: {ActorEmail}", requestId, actor.Email);
-                return ServiceResult<GetAccessRequestDto>.Fail("You cannot approve your own access request.");
+                logger.LogWarning("Self-{Action} attempt detected. RequestId: {RequestId}, ActorEmail: {ActorEmail}", actionLower, requestId, actor.Email);
+                return ServiceResult<GetAccessRequestDto>.Fail($"You cannot {actionLower} your own access request.");
             }
-
-            string auditAction = "";
 
             if (request.Status == "PendingManager")
             {
-                if (request.Requester?.ManagerEmail != actor.Email && actor.Role != "Manager")
+                if (request.Requester?.ManagerEmail != actor.Email)
                 {
-                    logger.LogWarning("Unauthorized manager approval attempt. RequestId: {RequestId}, " +
-                        "ActorEmail: {ActorEmail}, ExpectedManagerEmail: {ManagerEmail}", requestId, actor.Email, request.Requester?.ManagerEmail);
-                    throw new UnauthorizedAccessException("You are not authorized to approve this request as its manager.");
-                }
-
-                bool isHighRisk = request.Environment == "Production" || request.AccessLevel == "Admin";
-
-                if (isHighRisk)
-                {
-                    request.Status = "PendingSystemOwner";
-                    auditAction = "MANAGER_APPROVED_PENDING_OWNER";
-                }
-                else
-                {
-                    request.Status = "Approved";
-                    auditAction = "MANAGER_APPROVED_FINAL";
+                    logger.LogWarning("Unauthorized manager {Action} attempt. RequestId: {RequestId}, ActorEmail: {ActorEmail}, ExpectedManagerEmail: {ManagerEmail}",
+                        actionLower, requestId, actor.Email, request.Requester?.ManagerEmail);
+                    return ServiceResult<GetAccessRequestDto>.Fail($"You are not authorized to {actionLower} this request as its manager.");
                 }
             }
             else if (request.Status == "PendingSystemOwner")
             {
                 if (request.Application?.SystemOwnerEmail != actor.Email)
                 {
-                    logger.LogWarning("Unauthorized system owner approval attempt. RequestId: {RequestId}, " +
-                        "ActorEmail: {ActorEmail}, ExpectedOwnerEmail: {OwnerEmail}"
-                        , requestId, actor.Email, request.Application?.SystemOwnerEmail);
-                    throw new UnauthorizedAccessException("You are not authorized to approve this request as the system owner.");
+                    logger.LogWarning("Unauthorized system owner {Action} attempt. RequestId: {RequestId}, ActorEmail: {ActorEmail}, ExpectedOwnerEmail: {OwnerEmail}",
+                        actionLower, requestId, actor.Email, request.Application?.SystemOwnerEmail);
+                    return ServiceResult<GetAccessRequestDto>.Fail($"You are not authorized to {actionLower} this request as the system owner.");
                 }
-
-                request.Status = "Approved";
-                auditAction = "SYSTEM_OWNER_APPROVED_FINAL";
             }
             else
             {
-                logger.LogWarning("Invalid access request status for approval. RequestId: {RequestId}, Status: {Status}",
-                    requestId, request.Status);
-                return ServiceResult<GetAccessRequestDto>.Fail("Access request cannot be approved from its current status.");
+                logger.LogWarning("Invalid access request status for {Action}. RequestId: {RequestId}, Status: {Status}",
+                    actionLower, requestId, request.Status);
+                return ServiceResult<GetAccessRequestDto>.Fail($"Access request cannot be {pastTense} from its current status.");
+            }
+
+            string auditAction = "";
+
+            if (actionLower == "approve")
+            {
+                if (request.Status == "PendingManager")
+                {
+                    bool isHighRisk = request.Environment == "Production" || request.AccessLevel == "Admin";
+                    if (isHighRisk)
+                    {
+                        request.Status = "PendingSystemOwner";
+                        auditAction = "MANAGER_APPROVED_PENDING_OWNER";
+                    }
+                    else
+                    {
+                        request.Status = "Approved";
+                        auditAction = "MANAGER_APPROVED_FINAL";
+                    }
+                }
+                else if (request.Status == "PendingSystemOwner")
+                {
+                    request.Status = "Approved";
+                    auditAction = "SYSTEM_OWNER_APPROVED_FINAL";
+                }
+            }
+            else // reject
+            {
+                request.Status = "Rejected";
+                auditAction = "REJECTED";
             }
 
             request.ModifiedDate = DateTime.UtcNow;
@@ -141,64 +172,13 @@ namespace AccessRequestHub.API.Services
             try
             {
                 await context.SaveChangesAsync();
-                await LogAuditAsync(request.Id, actor.Email, auditAction, $"Approved by {actor.Email}");
+                string auditDetails = actionLower == "approve" ? $"Approved by {actor.Email}" : $"Reason: {dto.Reason}";
+                await LogAuditAsync(request.Id, actor.Email, auditAction, auditDetails);
             }
             catch (DbUpdateConcurrencyException)
             {
-                logger.LogError("Concurrency conflict while approving access request. " +
-                    "RequestId: {RequestId}, ActorEmail: {ActorEmail}", requestId, actor.Email);
-                throw new InvalidOperationException("The access request was modified by another process. Please reload the request and try again.");
-            }
-
-            return ServiceResult<GetAccessRequestDto>.Ok(request.ToDto());
-        }
-
-        public async Task<ServiceResult<GetAccessRequestDto>> RejectRequestAsync(int requestId, ApprovalActionDto dto)
-        {
-            var request = await context.AccessRequests
-                .Include(r => r.Application)
-                .Include(r => r.Requester)
-                .FirstOrDefaultAsync(r => r.Id == requestId);
-
-            if (request == null)
-            {
-                logger.LogWarning("Access request not found. RequestId: {RequestId}", requestId);
-                return ServiceResult<GetAccessRequestDto>.Fail("Access request not found.");
-            }
-
-            if (request.Status == "Approved" || request.Status == "Rejected")
-            {
-                logger.LogWarning("Cannot approve access request because it is already in a terminal state. " +
-                    "RequestId: {RequestId}, Status: {Status}", requestId, request.Status);
-                return ServiceResult<GetAccessRequestDto>.Fail("Access request is already in a terminal state.");
-            }
-
-            var actor = await context.Users.FindAsync(dto.ActorEmail);
-            if (actor == null)
-            {
-                logger.LogWarning("Actor not found. ActorEmail: {ActorEmail}, RequestId: {RequestId}", dto.ActorEmail, requestId);
-                return ServiceResult<GetAccessRequestDto>.Fail("Approval actor not found.");
-            }
-
-            if (request.RequesterEmail == actor.Email)
-            {
-                logger.LogWarning("Self-rejection attempt detected. RequestId: {RequestId}, ActorEmail: {ActorEmail}", requestId, actor.Email);
-                return ServiceResult<GetAccessRequestDto>.Fail("You cannot reject your own access request.");
-            }
-
-            request.Status = "Rejected";
-            request.ModifiedDate = DateTime.UtcNow;
-            request.Version++;
-
-            try
-            {
-                await context.SaveChangesAsync();
-                await LogAuditAsync(request.Id, actor.Email, "REJECTED", $"Reason: {dto.Reason}");
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                logger.LogError("Concurrency conflict while approving access request. " +
-                    "RequestId: {RequestId}, ActorEmail: {ActorEmail}", requestId, actor.Email);
+                logger.LogError("Concurrency conflict while {Action}ing access request. RequestId: {RequestId}, ActorEmail: {ActorEmail}",
+                    actionLower, requestId, actor.Email);
                 throw new InvalidOperationException("The access request was modified by another process. Please reload the request and try again.");
             }
 
