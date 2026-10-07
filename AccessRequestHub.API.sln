@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35931.197 d17.13
+VisualStudioVersion = 17.13.35931.197
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccessRequestHub.API", "AccessRequestHub.API\AccessRequestHub.API.csproj", "{20C54CDA-34CD-42A6-BB65-D29BFDE68B49}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccessRequestHub.App", "AccessRequestHub.App\AccessRequestHub.App.csproj", "{5F124E11-1523-4E6D-BC6F-1D190B4CFD67}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccessRequestHub.Common", "AccessRequestHub.Common\AccessRequestHub.Common.csproj", "{880BD08A-9CD9-4327-BB0E-B4A4D3BA52DF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{5F124E11-1523-4E6D-BC6F-1D190B4CFD67}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5F124E11-1523-4E6D-BC6F-1D190B4CFD67}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5F124E11-1523-4E6D-BC6F-1D190B4CFD67}.Release|Any CPU.Build.0 = Release|Any CPU
+		{880BD08A-9CD9-4327-BB0E-B4A4D3BA52DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{880BD08A-9CD9-4327-BB0E-B4A4D3BA52DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{880BD08A-9CD9-4327-BB0E-B4A4D3BA52DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{880BD08A-9CD9-4327-BB0E-B4A4D3BA52DF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
