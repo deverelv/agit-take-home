@@ -53,9 +53,23 @@ namespace AccessRequestHub.API.Services
             context.AccessRequests.Add(newRequest);
             await context.SaveChangesAsync();
 
-            // await LogAuditAsync(newRequest.Id, requesterEmail, "CREATED", "Permohonan akses berhasil diajukan.");
+            await LogAuditAsync(newRequest.Id, requesterEmail, "CREATED", "Request access created.");
 
             return ServiceResult<GetAccessRequestDto>.Ok(newRequest.ToDto());
+        }
+
+        private async Task LogAuditAsync(int requestId, string actorEmail, string action, string details)
+        {
+            var audit = new AuditLog
+            {
+                RequestId = requestId,
+                ActorEmail = actorEmail,
+                Action = action,
+                Details = details,
+                CreatedDate = DateTime.UtcNow
+            };
+            context.AuditLogs.Add(audit);
+            await context.SaveChangesAsync();
         }
     }
 }
