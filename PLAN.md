@@ -47,4 +47,4 @@ Pengujian otomatis dirancang untuk membuktikan seluruh kriteria skenario wajib:
    * Seluruh data *seed* akan terekam di dalam file migrasi (*migration snapshot*). Hal ini sangat praktis dan cepat untuk pengembangan MVP lokal, namun kurang ideal jika data master berukuran besar atau sering berubah di skala produksi.
 
 ## 6. Perubahan Plan Selama Implementasi
-* Belum ada perubahan terhadap implementation plan pada tahap awal.
+* Refactor: Ubah static values (e.g. Request Status) menjadi enum.
