@@ -16,8 +16,8 @@
   * Evidence: AccessRequest.cs, RequestAccessService.cs
 * **Audit log harus atomik dengan perubahan status**:
   * Severity: Medium
-  * Status: Partially Resolved
-  * Action: Menggunakan satu `.SaveChangesAsync()` dalam flow.
+  * Status: Resolved
+  * Action: Menggunakan hanya satu `.SaveChangesAsync()` dalam satu flow.
   * Evidence: RequestAccessService.cs
 * **Rejection membutuhkan alasan**:
   * Severity: Medium

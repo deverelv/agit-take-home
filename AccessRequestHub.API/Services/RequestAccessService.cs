@@ -4,6 +4,7 @@ using AccessRequestHub.API.Models;
 using Microsoft.EntityFrameworkCore;
 using AccessRequestHub.API.Interfaces;
 using AccessRequestHub.API.Extensions;
+using System;
 
 namespace AccessRequestHub.API.Services
 {
@@ -171,9 +172,17 @@ namespace AccessRequestHub.API.Services
 
             try
             {
-                await context.SaveChangesAsync();
                 string auditDetails = actionLower == "approve" ? $"Approved by {actor.Email}" : $"Reason: {dto.Reason}";
-                await LogAuditAsync(request.Id, actor.Email, auditAction, auditDetails);
+                var audit = new AuditLog
+                {
+                    RequestId = request.Id,
+                    ActorEmail = actor.Email,
+                    Action = auditAction,
+                    Details = auditDetails,
+                    CreatedDate = DateTime.UtcNow
+                };
+                context.AuditLogs.Add(audit);
+                await context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -183,20 +192,6 @@ namespace AccessRequestHub.API.Services
             }
 
             return ServiceResult<GetAccessRequestDto>.Ok(request.ToDto());
-        }
-
-        private async Task LogAuditAsync(int requestId, string actorEmail, string action, string details)
-        {
-            var audit = new AuditLog
-            {
-                RequestId = requestId,
-                ActorEmail = actorEmail,
-                Action = action,
-                Details = details,
-                CreatedDate = DateTime.UtcNow
-            };
-            context.AuditLogs.Add(audit);
-            await context.SaveChangesAsync();
         }
     }
 }
